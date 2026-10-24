@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>jsPsych RDK — m-AFC (2–8), balanced (random direction)</title>
+    <link href="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/css/jspsych.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/jspsych.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/plugins/jspsych-html-keyboard-response.js"></script>
+    <script src="jatos.js"></script>
+    <style>
+      .jspsych-content { max-width: 100% !important; }
+      html, body { height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; }
+      body { background: #111; color: #eee; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+      #jspsych-progressbar-container { display: none; }
+      .instr { max-width: 800px; margin: 40px auto; line-height: 1.6; }
+      .instr.welcome {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 56px 64px;
+        min-height: calc(100vh - 80px);
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 24px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        text-align: left;
+      }
+      .instr.welcome.scrollable {
+        min-height: auto;
+        max-height: calc(100vh - 120px);
+        overflow-y: auto;
+        padding-right: 48px;
+      }
+      .instr.welcome h1 { margin: 0 0 24px; font-size: 2.4rem; font-weight: 600; letter-spacing: 0.5px; }
+      .instr.welcome p { margin: 0 0 18px; font-size: 1.05rem; color: rgba(255,255,255,0.85); }
+      .instr.welcome.landing { justify-content: center; align-items: flex-start; gap: 24px; }
+      .instr.welcome.landing p { max-width: 600px; }
+      .radio-group { display: flex; flex-direction: column; gap: 10px; }
+      .radio-group label { display: flex; align-items: center; gap: 10px; font-size: 1rem; }
+      .ui-button {
+        appearance: none;
+        background: transparent;
+        color: #fff;
+        border: 1.5px solid rgba(255,255,255,0.8);
+        border-radius: 999px;
+        padding: 12px 28px;
+        font-size: 1rem;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        text-transform: none;
+      }
+      .ui-button:hover { background: rgba(255,255,255,0.15); border-color: #fff; transform: translateY(-1px); }
+      .ui-button:focus { outline: none; box-shadow: 0 0 0 3px rgba(255,255,255,0.25); }
+      .ui-button[disabled] { opacity: 0.5; cursor: default; transform: none; }
+      .welcome-actions { display: flex; justify-content: flex-start; align-items: center; gap: 16px; margin: 12px 0 32px; }
+      .welcome-actions.center { justify-content: center; }
+      kbd { background:#222; padding:2px 6px; border-radius:4px; border:1px solid #444; }
+
+      .instr.welcome.practice-feedback {
+        width: min(900px, 90vw);
+      }
+
+      .fullscreen-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.92);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+        text-align: center;
+        z-index: 9999;
+      }
+      .fullscreen-overlay-content { max-width: 520px; }
+      .fullscreen-overlay h2 { margin: 0 0 16px; font-size: 2rem; font-weight: 600; }
+      .fullscreen-overlay p { margin: 0 0 24px; font-size: 1.05rem; color: rgba(255,255,255,0.85); }
+
+    </style>
+  </head>
+  <body></body>
+
+  <script>
+    // CONDITION INITIALIZATION — declare only
+    let CONDITION = null;
+    // rdk plugin
+    (function(){
+      var plugin = {};
+      plugin.info = {
+        name: 'rdk',
+        parameters: {
+          choices: {type: jsPsych.plugins.parameterType.KEYCODE, default: []},
+          correct_choice: {type: jsPsych.plugins.parameterType.STRING, default: null},
+          trial_duration: {type: jsPsych.plugins.parameterType.INT, default: -1},
+          response_ends_trial: {type: jsPsych.plugins.parameterType.BOOL, default: true},
+          number_of_apertures: {type: jsPsych.plugins.parameterType.INT, default: 1},
+          number_of_dots: {type: jsPsych.plugins.parameterType.INT, array: true, default: 100},
+          coherence: {type: jsPsych.plugins.parameterType.FLOAT, array: true, default: 0},
+          coherent_direction: {type: jsPsych.plugins.parameterType.FLOAT, array: true, default: 0},
+          aperture_width: {type: jsPsych.plugins.parameterType.INT, array: true, default: 160},
+          aperture_type: {type: jsPsych.plugins.parameterType.INT, default: 1},
+          aperture_center_x: {type: jsPsych.plugins.parameterType.FLOAT, array: true, default: []},
+          aperture_center_y: {type: jsPsych.plugins.parameterType.FLOAT, array: true, default: []},
+          aperture_labels: {type: jsPsych.plugins.parameterType.STRING, array: true, default: []},
+          speed: {type: jsPsych.plugins.parameterType.FLOAT, array: true, default: null}
+        }
+      };
+
+      function asArray(x, N) {
+        if (Array.isArray(x)) return x.slice(0, N).concat(Array(Math.max(0, N - x.length)).fill(x[x.length-1]));
+        return Array(N).fill(x);
+      }
+
+      const DEFAULT_DOT_SPEED = 120; // px/sec
+
+      plugin.trial = function(display_element, trial) {
+        const N = trial.number_of_apertures;
+        const widths   = asArray(trial.aperture_width, N);
+        const centersX = asArray(trial.aperture_center_x, N);
+        const centersY = asArray(trial.aperture_center_y, N);
+        const numDots  = asArray(trial.number_of_dots, N);
+        const coherence= asArray(trial.coherence, N);
+        const dirDeg   = asArray(trial.coherent_direction, N);
+        const baseSpeed = (trial.speed === null || typeof trial.speed === 'undefined')
+          ? DEFAULT_DOT_SPEED
+          : trial.speed;
+        const speeds   = asArray(baseSpeed, N).map(val => {
+          const num = Number(val);
+          if (!Number.isFinite(num)) return DEFAULT_DOT_SPEED;
+          return Math.max(0, num);
+        });
+
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+        const pb = document.getElementById('jspsych-progressbar-container');
+        const pbH = pb ? pb.offsetHeight : 0;
+        const w = window.innerWidth;
+        const h = Math.max(200, window.innerHeight - pbH);
+        display_element.style.margin = '0';
+        display_element.style.padding = '0';
+        display_element.style.overflow = 'hidden';
+        display_element.innerHTML = `
+          <div id="rdk-wrap" style="position:relative;width:${w}px;height:${h}px;margin:0 auto;padding:0;">
+            <canvas id="rdk-canvas" width="${w}" height="${h}" style="display:block;width:${w}px;height:${h}px;margin:0;padding:0;"></canvas>
+          </div>
+        `;
+        const canvas = display_element.querySelector('#rdk-canvas');
+        const wrap = display_element.querySelector('#rdk-wrap');
+        const ctx = canvas.getContext('2d');
+
+        const apertures = [];
+        const labels = Array.isArray(trial.aperture_labels) ? trial.aperture_labels : [];
+        function normalizeLabel(value, idx){
+          if (typeof value === 'number' && Number.isFinite(value)) return value;
+          if (typeof value === 'string' && value.trim() !== '') {
+            const num = Number(value);
+            if (Number.isFinite(num)) return num;
+            return value.trim();
+          }
+          return idx + 1;
+        }
+        const dotRadius = 1.5;
+        function randAngle(){ return Math.random()*Math.PI*2; }
+
+        for (let a = 0; a < N; a++) {
+          const radius = widths[a] / 2;
+          const cx = centersX[a] || w/2;
+          const cy = centersY[a] || h/2;
+          const nd = numDots[a] || 100;
+          const coh = Math.max(0, Math.min(1, coherence[a] || 0));
+          const nCoh = Math.round(nd * coh);
+
+          const dots = [];
+          for (let i=0;i<nd;i++){
+            const r = radius * Math.sqrt(Math.random());
+            const th = Math.random()*Math.PI*2;
+            const x = cx + r*Math.cos(th);
+            const y = cy + r*Math.sin(th);
+            const coherent = i < nCoh;
+            const theta = coherent ? (dirDeg[a]||0) * Math.PI/180 : randAngle();
+            dots.push({x,y,theta,coherent});
+          }
+          for (let i=dots.length-1;i>0;i--){
+            const j = Math.floor(Math.random()*(i+1));
+            [dots[i],dots[j]] = [dots[j],dots[i]];
+          }
+          const label = normalizeLabel(labels[a], a);
+          apertures.push({cx,cy,radius,dots,index:a,label,speed:speeds[a]});
+        }
+
+        let startTime = performance.now(), rafId=null, responded=false, lastFrameTime=null;
+
+        function step(now) {
+          if (responded) return;
+          const timestamp = (typeof now === 'number') ? now : performance.now();
+          if (lastFrameTime === null) {
+            lastFrameTime = timestamp;
+          }
+          let dt = (timestamp - lastFrameTime) / 1000;
+          lastFrameTime = timestamp;
+          if (!Number.isFinite(dt) || dt <= 0) dt = 0;
+          const cappedDt = Math.min(dt, 0.1);
+
+          ctx.clearRect(0,0,w,h);
+          for (let a=0;a<N;a++){
+            const A = apertures[a];
+
+            
+            ctx.save();
+            ctx.beginPath(); ctx.arc(A.cx, A.cy, A.radius, 0, Math.PI*2); ctx.clip();
+            for (let d of A.dots){
+              if (!d.coherent) {
+                const wander = (Math.random() - 0.5) * 0.5 * (cappedDt / (1/60));
+                d.theta += wander;
+              }
+              const move = A.speed * cappedDt;
+              d.x += move * Math.cos(d.theta);
+              d.y += move * Math.sin(d.theta);
+              const dx=d.x-A.cx, dy=d.y-A.cy;
+              if (Math.hypot(dx,dy) > A.radius){
+                if (d.coherent) {
+                  d.theta = (dirDeg[a]||0) * Math.PI/180;
+                } else {
+                  d.theta = randAngle();
+                }
+                const rr = A.radius * Math.sqrt(Math.random());
+                const tt = Math.random()*Math.PI*2;
+                d.x = A.cx + rr*Math.cos(tt);
+                d.y = A.cy + rr*Math.sin(tt);
+              }
+              ctx.beginPath(); ctx.arc(d.x, d.y, dotRadius, 0, Math.PI*2);
+              ctx.fillStyle = "#e6e6e6"; ctx.fill();
+            }
+            ctx.restore();
+
+            
+            ctx.beginPath();
+            ctx.arc(A.cx, A.cy, A.radius, 0, Math.PI*2);
+            ctx.strokeStyle = "rgba(255,255,255,0.25)";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+          }
+          if (!responded) rafId = requestAnimationFrame(step);
+        }
+        rafId = requestAnimationFrame(step);
+
+        const validKeys = Array.isArray(trial.choices)
+          ? trial.choices.map(k => (typeof k==='number'?jsPsych.pluginAPI.convertKeyCodeToKeyCharacter(k):k).toLowerCase())
+          : [];
+        const end_trial = (info) => {
+          responded = true;
+          if (rafId) cancelAnimationFrame(rafId);
+          if (kbListener) jsPsych.pluginAPI.cancelKeyboardResponse(kbListener);
+          try { canvas.removeEventListener('pointerdown', onPointerDown); } catch(e){}
+          try { jsPsych.pluginAPI.clearAllTimeouts(); } catch(e){}
+          const rt = info ? info.rt : Math.round(performance.now()-startTime);
+          let chosen = null;
+          if (info) {
+            if (Object.prototype.hasOwnProperty.call(info, 'chosen')) {
+              chosen = info.chosen;
+            } else if (Object.prototype.hasOwnProperty.call(info, 'key')) {
+              chosen = info.key;
+            }
+          }
+          const chosenStr = (chosen !== null && typeof chosen !== 'undefined') ? String(chosen).trim() : null;
+          
+          let correct = null;
+
+          if (chosenStr !== null && trial.correct_choice !== null && trial.correct_choice !== undefined) {
+            if (Array.isArray(trial.correct_choice)) {
+              // multiple correct answers
+              correct = trial.correct_choice.map(String).includes(chosenStr);
+            } else {
+              // single correct answer
+              correct = (chosenStr === String(trial.correct_choice));
+            }
+          }
+
+          // condition-dependent correctness inversion
+          if (CONDITION === "noise" && correct !== null) {
+            correct = !correct;
+          }
+          display_element.innerHTML = '';
+          display_element.removeAttribute('style');
+          document.documentElement.style.overflow = '';
+          document.body.style.overflow = '';
+          const numericPattern = /^-?\d+(\.\d+)?$/;
+          const chosenValue = (chosenStr !== null && numericPattern.test(chosenStr)) ? Number(chosenStr) : chosenStr;
+          jsPsych.finishTrial({ rt, chosen_circle: chosenValue, correct, m: N, coh_dir_deg: trial._coh_dir_deg });
+        };
+
+        const kbListener = (validKeys.length > 0)
+          ? jsPsych.pluginAPI.getKeyboardResponse({
+              callback_function: end_trial,
+              valid_responses: validKeys,
+              rt_method: 'performance', persist: false, allow_held_key: false
+            })
+          : null;
+
+        const rect = () => canvas.getBoundingClientRect();
+        function toCanvasXY(e){
+          const r = rect();
+          const scaleX = canvas.width / r.width;
+          const scaleY = canvas.height / r.height;
+          return {
+            x: (e.clientX - r.left) * scaleX,
+            y: (e.clientY - r.top) * scaleY
+          };
+        }
+        function onPointerDown(e){
+          if (responded) return;
+          const p = toCanvasXY(e);
+          for (let a=0;a<N;a++){
+            const A = apertures[a];
+            if (Math.hypot(p.x - A.cx, p.y - A.cy) <= A.radius){
+              end_trial({ rt: Math.round(performance.now()-startTime), chosen: A.label });
+              return;
+            }
+          }
+        }
+        canvas.style.cursor = 'pointer';
+        canvas.addEventListener('pointerdown', onPointerDown);
+
+        if (trial.trial_duration > 0) {
+          jsPsych.pluginAPI.setTimeout(() => { if (!responded) end_trial(null); }, trial.trial_duration);
+        }
+      };
+
+      jsPsych.plugins['rdk'] = plugin;
+    })();
+  </script>
+  <script>
+    // prolific params
+    const prolificParams = {
+        subject_id:
+        jsPsych.data.getURLVariable('PROLIFIC_PID') ||
+        (window.jatos && jatos.urlQueryParameters && jatos.urlQueryParameters.PROLIFIC_PID) ||
+        null,
+        study_id:
+        jsPsych.data.getURLVariable('STUDY_ID') ||
+        (window.jatos && jatos.urlQueryParameters && jatos.urlQueryParameters.STUDY_ID) ||
+        null,
+        session_id:
+        jsPsych.data.getURLVariable('SESSION_ID') ||
+        (window.jatos && jatos.urlQueryParameters && jatos.urlQueryParameters.SESSION_ID) ||
+        null
+    };
+
+    jsPsych.data.addProperties({
+        subject_id: prolificParams.subject_id,
+        study_id:   prolificParams.study_id,
+        session_id: prolificParams.session_id,
+        condition: CONDITION
+    });
+    </script>
+
+
+  <script>
+    // experiment configuration
+    const TOTAL_TRIALS = 16;
+    const M_VALUES = [2, 4, 6, 8];
+
+    const DIAMETER = 160;
+    const GAP_BETWEEN = 30;
+    const DOTS_PER_APERTURE = 100;
+    const DOT_SPEED = 120; // px/sec
+    const BLANK_DURATION = 500;
+  const COHERENCE_LEVEL = .22; // change back 0.22
+    
+    const COH_DIR_OPTIONS = [0,45,90,135,180,225,270,315];
+
+    // randomized condition assignment
+    CONDITION = Math.random() < 0.5 ? "coherent" : "noise";
+
+    // utilities
+    function shuffle(a){ for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+    function balanced_m_schedule(total, m_vals){
+      const k = m_vals.length, base = Math.floor(total/k), rem = total % k, out = [];
+      m_vals.forEach(m => { for (let i=0;i<base;i++) out.push(m); });
+      shuffle(m_vals.slice()).slice(0,rem).forEach(m=>out.push(m));
+      return shuffle(out);
+    }
+
+    function toggleProgressBar(show){
+      const container = document.getElementById('jspsych-progressbar-container');
+      if (!container) return;
+      container.style.display = show ? 'block' : 'none';
+    }
+
+    let completedTrials = 0;
+
+    const FULLSCREEN_EVENTS = ['fullscreenchange','webkitfullscreenchange','mozfullscreenchange','MSFullscreenChange'];
+
+    function isFullscreenActive(){
+      return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+    }
+
+    const fullscreenGuard = (() => {
+      let overlay = null;
+      let paused = false;
+      let enabled = false;
+
+      function requestFullscreen(){
+        const el = document.documentElement;
+        let request;
+        if (el.requestFullscreen) request = el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) request = el.webkitRequestFullscreen();
+        else if (el.mozRequestFullScreen) request = el.mozRequestFullScreen();
+        else if (el.msRequestFullscreen) request = el.msRequestFullscreen();
+        if (request && typeof request.catch === 'function') {
+          request.catch(() => {});
+        }
+      }
+
+      function buildOverlay(){
+        const wrapper = document.createElement('div');
+        wrapper.className = 'fullscreen-overlay';
+        wrapper.innerHTML = `
+          <div class="fullscreen-overlay-content">
+            <h2>Fullscreen Needed</h2>
+            <p>The study runs in fullscreen to keep the display consistent. Please return to fullscreen to continue.</p>
+            <button type="button" class="ui-button">Return to Fullscreen</button>
+          </div>
+        `;
+        const btn = wrapper.querySelector('button');
+        if (btn) {
+          btn.addEventListener('click', requestFullscreen);
+        }
+        return wrapper;
+      }
+
+      function pauseExperiment(){
+        if (paused) return;
+        if (typeof jsPsych !== 'undefined' && jsPsych.pauseExperiment) {
+          try { jsPsych.pauseExperiment(); paused = true; } catch (e) {}
+        }
+      }
+
+      function resumeExperiment(){
+        if (!paused) return;
+        if (typeof jsPsych !== 'undefined' && jsPsych.resumeExperiment) {
+          try { jsPsych.resumeExperiment(); paused = false; } catch (e) {}
+        } else {
+          paused = false;
+        }
+      }
+
+      function showOverlay(){
+        if (!enabled) return;
+        if (!overlay) {
+          overlay = buildOverlay();
+          document.body.appendChild(overlay);
+        }
+        pauseExperiment();
+      }
+
+      function hideOverlay(){
+        if (overlay) {
+          overlay.remove();
+          overlay = null;
+        }
+        resumeExperiment();
+      }
+
+      function handleChange(){
+        if (!enabled) {
+          if (overlay) hideOverlay();
+          return;
+        }
+        if (isFullscreenActive()) hideOverlay();
+        else showOverlay();
+      }
+
+      FULLSCREEN_EVENTS.forEach(evt => {
+        document.addEventListener(evt, handleChange);
+      });
+
+      return {
+        enable(){ enabled = true; handleChange(); },
+        disable(){ enabled = false; hideOverlay(); },
+        handleChange
+      };
+    })();
+
+    function makeInfoScreen({ id, title, body, allowScroll = false, continueLabel = 'Continue' }){
+      const scrollClass = allowScroll ? ' scrollable' : '';
+      const buttonId = `${id}-continue`;
+      return {
+        type: "html-keyboard-response",
+        stimulus: `
+          <div class="instr welcome${scrollClass}">
+            ${title ? `<h1>${title}</h1>` : ''}
+            ${body}
+            <div class="welcome-actions">
+              <button id="${buttonId}" class="ui-button">${continueLabel}</button>
+            </div>
+          </div>` ,
+        choices: jsPsych.NO_KEYS,
+        on_load: function(){
+          toggleProgressBar(false);
+          const btn = document.getElementById(buttonId);
+          const container = document.querySelector('.instr.welcome');
+          if (container) container.scrollTop = 0;
+          if (btn) {
+            btn.addEventListener('click', function(){ jsPsych.finishTrial(); });
+          }
+        }
+      };
+    }
+
+    var timeline = [];
+
+    //welcome screen
+    var landing = {
+      type: "html-keyboard-response",
+      stimulus: `
+        <div class="instr welcome landing">
+          <h1>Welcome</h1>
+          <p>Welcome to our experiment. Please enter full screen before continuing.</p>
+          <div class="welcome-actions center">
+            <button id="enter-fs" class="ui-button">Enter Fullscreen</button>
+          </div>
+          <div id="landing-continue-wrapper" class="welcome-actions center" style="display:none;">
+            <button id="landing-continue" class="ui-button">Continue</button>
+          </div>
+        </div>`,
+      choices: jsPsych.NO_KEYS,
+      on_load: function(){
+        toggleProgressBar(false);
+        fullscreenGuard.disable();
+        var fsButton = document.getElementById('enter-fs');
+        var continueWrapper = document.getElementById('landing-continue-wrapper');
+        var continueBtn = document.getElementById('landing-continue');
+        var events = FULLSCREEN_EVENTS.slice();
+
+        function updateContinue(){
+          if (!continueWrapper) return;
+          continueWrapper.style.display = isFullscreenActive() ? 'block' : 'none';
+        }
+
+        events.forEach(function(evt){ document.addEventListener(evt, updateContinue); });
+        updateContinue();
+        fullscreenGuard.handleChange();
+
+        if (fsButton) {
+          fsButton.addEventListener('click', function(){
+            var el = document.documentElement;
+            var request;
+            if (el.requestFullscreen) request = el.requestFullscreen();
+            else if (el.webkitRequestFullscreen) request = el.webkitRequestFullscreen();
+            else if (el.mozRequestFullScreen) request = el.mozRequestFullScreen();
+            else if (el.msRequestFullscreen) request = el.msRequestFullscreen();
+            else updateContinue();
+
+            if (request && typeof request.then === 'function') {
+              request.then(updateContinue).catch(function(){
+                if (continueWrapper) continueWrapper.style.display = 'block';
+              });
+            } else {
+              setTimeout(updateContinue, 200);
+            }
+          });
+        }
+
+        if (continueBtn) {
+          continueBtn.addEventListener('click', function(){
+            events.forEach(function(evt){ document.removeEventListener(evt, updateContinue); });
+            jsPsych.finishTrial();
+          });
+        }
+      }
+    };
+    timeline.push(landing);
+
+    let purposeText;
+
+    if (CONDITION === "coherent") {
+      purposeText = `
+        <p>Your task is to click on a circle in which some dots are moving in the same direction.</p>
+      `;
+    } else {
+      purposeText = `
+        <p>Your task is to click on a circle in which all dots are moving randomly (i.e. none of the dots are moving in the same direction).</p>
+      `;
+    }
+    const infoScreens = [
+      makeInfoScreen({
+        id: 'introduction',
+        title: 'Introduction',
+        body: `
+          <p>Hello and welcome to our experiment.</p>
+          <p>Please make sure you can work for up to 20 minutes without interruption and avoid any distractions (i.e., TV, music, smartphones, children, cats).</p>
+          <p>Please do not refresh the webpage during the experiment as you will not be able to restart or complete the experiment if you refresh.</p>
+          <p>This experiment involves a motion perception task. Please read the instructions carefully and try to do the best you can.</p>
+          <p><strong>What will you be doing in this experiment?</strong></p>
+          <p>In this experiment we are interested in how well you can detect when dots move in the same direction, compared to dots moving randomly.</p>
+          <p>During the experiment, you will be presented with either 2, 4, 6, or 8 circles containing containing many moving dots. For half of the circles displayed, some of the dots are moving in the same direction, while the rest are moving randomly. In all the other circles, all of the dots are moving randomly. ${purposeText}</p>
+          <p>Please press Continue.</p>
+        `
+      }),
+      makeInfoScreen({
+        id: 'participant-info',
+        title: 'Participation Information',
+        allowScroll: true,
+        body: `
+          <p>This study has been approved by the Ethics Committee of the UCL Research Department of Experimental Psychology, ID No: EP/2021/005.</p>
+          <p><strong>Name, Address and Contact Details of investigators:</strong><br>
+            Principal Investigator: Dr. Henrik Singmann, Dept of Experimental Psychology, UCL, 26 Bedford Way, London WC1H 0AP, <a href="mailto:h.singmann@ucl.ac.uk" style="color:inherit;text-decoration:underline;">h.singmann@ucl.ac.uk</a>
+          </p>
+          <p>You are being invited to take part in a research study. All proposals for research using human participants are reviewed by an ethics committee before they can proceed. This proposal was reviewed by the Ethics Committee of the UCL Department of Experimental Psychology. Please take time to decide whether or not you wish to take part.</p>
+          <p>If you do decide to take part, you will be asked to consent and any information you give will be treated in strictest confidence. It is up to you whether or not you take part but before you agree, please read the following information carefully.</p>
+          <h2>What is the purpose of the study?</h2>
+          <p>In this experiment we are investigating whether you can perceive coherent motion within random motion. We will use this data to test whether a specific mathematical framework can account for the resulting responses. The experiment comprises a single session lasting up to 20 mins. All the instructions will be presented on the display and the computer will store your responses.</p>
+          <h2>What are the possible disadvantages and risks of taking part?</h2>
+          <p>There are no foreseeable discomforts, disadvantages and risks for taking part. Please only take part if you wish to and should you feel uncomfortable at any point, please withdraw from the study.</p>
+          <h2>What are the possible benefits of taking part?</h2>
+          <p>It is hoped that this work will inform the application of research in the area of cognitive science.</p>
+          <h2>What happens if I do not want to take part in the study?</h2>
+          <p>You do not have to take part in this study if you do not wish to. Choosing not to take part will not disadvantage you in any way. If you decide to take part you may withdraw at any time without giving a reason. If you decide to withdraw, the data you have provided up to that point will be destroyed.</p>
+          <h2>Who will collect the information, and how will it be stored and used?</h2>
+          <p>Your information will be collected by Dr. Singmann’s research team and treated in strictest confidence. All data collected as part of this research will be anonymized and handled and stored in compliance with the General Data Protecting Regulation (GDPR).</p>
+          <p>Once data has been collected, it is impossible to withdraw consent for your data to be used, because the data will be anonymous at that time. Please only continue if you are happy for your anonymized data to be used in this way.</p>
+          <p>Completely anonymized datafiles (no Prolific ID, no Worker ID, no IP address) will be shared online in accordance with open-science practices. If you do not consent to anonymized data being shared, please close your browser window and do not take part in this study.</p>
+          <h2>Data Protection Privacy Notice</h2>
+          <p>The controller for this project will be University College London (UCL). The UCL Data Protection Officer provides oversight of UCL activities involving the processing of personal data, and can be contacted at <a href="mailto:data-protection@ucl.ac.uk" style="color:inherit;text-decoration:underline;">data-protection@ucl.ac.uk</a>.</p>
+          <p>This ‘local’ privacy notice sets out the information that applies to this particular study. Further details on how UCL uses participant information can be found in our ‘general’ privacy notice for participants in research studies.</p>
+          <p>The information that is required to be provided to participants under data protection legislation (GDPR and DPA 2018) is provided across both the ‘local’ and ‘general’ privacy notices. The lawful basis that will be used to process your personal data is ‘Public task’.</p>
+          <p>Your personal data will be processed so long as it is required for the research project. If we are able to anonymise or pseudonymise the personal data you provide we will undertake this, and will endeavour to minimise the processing of personal data wherever possible.</p>
+          <p>If you are concerned about how your personal data is being processed, or if you would like to contact us about your rights, please contact UCL in the first instance at <a href="mailto:data-protection@ucl.ac.uk" style="color:inherit;text-decoration:underline;">data-protection@ucl.ac.uk</a>.</p>
+          <h2>What if something goes wrong?</h2>
+          <p>If you would like to raise a complaint about this research, please contact the Principal Investigator (contact details above). If you are concerned about the ethics of the research, please contact <a href="mailto:ethics@ucl.ac.uk" style="color:inherit;text-decoration:underline;">ethics@ucl.ac.uk</a>.</p>
+          <p>Thank you for reading this information sheet and for considering taking part in this research study.</p>
+          <p>Press Continue to proceed.</p>
+        `
+      })
+    ];
+    infoScreens.push({
+      type: "html-keyboard-response",
+      stimulus: `
+        <div class="instr welcome scrollable">
+          <h1>Informed Consent</h1>
+          <p><strong>Project:</strong> Perceptual Decision Making </p>
+          <p>This study has been approved by the Ethics Committee of the UCL Research Department of Experimental Psychology: ID No: EP/2021/005.</p>
+          <p>By checking the box below, I confirm that:</p>
+          <ul style="margin-left: 20px; padding-left: 20px; line-height: 1.6;">
+            <li>I have read and understood the information sheet. I have had the opportunity to consider the information.</li>
+            <li>I understand that all information collected will be treated as strictly confidential and handled in accordance with the provisions of the General Data Protection Regulation.</li>
+            <li>I understand that anonymous data that cannot be traced back to me individually may be used in academic publications and shared in accordance with open science guidelines and I consent to this.</li>
+            <li>I understand that the legal basis for processing any personal information about me is my consent.</li>
+            <li>I understand that I can withdraw from the study at any time but that it will be difficult or impossible to withdraw my data once the task has been completed.</li>
+            <li>I am over 18.</li>
+          </ul>
+          <label style="margin-top: 16px; display: flex; gap: 12px; align-items: flex-start;">
+            <input id="consent-checkbox" type="checkbox" style="margin-top: 4px; transform: scale(1.2);" />
+            <span>I confirm all of the above and I consent to taking part in this study.</span>
+          </label>
+          <div class="welcome-actions">
+            <button id="consent-continue" class="ui-button" disabled>Continue</button>
+          </div>
+        </div>`,
+      choices: jsPsych.NO_KEYS,
+      on_load: function(){
+        toggleProgressBar(false);
+        const container = document.querySelector('.instr.welcome');
+        if (container) container.scrollTop = 0;
+        const checkbox = document.getElementById('consent-checkbox');
+        const btn = document.getElementById('consent-continue');
+        function update(){
+          if (!btn) return;
+          btn.disabled = !(checkbox && checkbox.checked);
+        }
+        if (checkbox) checkbox.addEventListener('change', update);
+        if (btn) {
+          btn.addEventListener('click', function(){
+            if (!btn.disabled) jsPsych.finishTrial();
+          });
+        }
+        update();
+      }
+    });
+
+    let taskInstruction;
+
+    if (CONDITION === "coherent") {
+      taskInstruction = `
+        <p>Your task is to click on a circle in which some dots are moving in the same direction using the mouse cursor.</p>
+      `;
+    } else {
+      taskInstruction = `
+        <p>Your task is to click on a circle in which all dots are moving randomly (i.e. none of the dots are moving in the same direction).</p>
+      `;
+    }
+
+    // Build full instruction body
+    const instructionBody = `
+      <p>This experiment consists of 4 practice trials followed by 8 real trials.</p>
+      <p>Each trial, 2, 4, 6, or 8 circles will appear on the screen with many dots moving within them.</p>
+      <p>For either 2, 4, 6, or 8 circles, half of them will have some of the dots moving in the same direction, while the rest of the dots in that circle are moving in random directions. In all of the other circles, all of the dots are moving in random directions. The direction of movement that you need to detect can be different for each trial.</p>
+      ${taskInstruction}
+      <p>We will begin with 4 practice trials in which you will get feedback. These do not count towards your overall score.</p>
+      <p>Once you have read and understood these instructions, click Start Practice Trials.</p>
+    `;
+
+    infoScreens.push(
+      makeInfoScreen({
+        id: 'instructions',
+        title: 'Instructions',
+        body: instructionBody,
+        continueLabel: 'Start Practice Trials'
+      })
+    );
+
+    infoScreens.forEach(screen => timeline.push(screen));
+
+    const practiceBlock = {
+      timeline: [],
+      on_timeline_start: function(){ fullscreenGuard.enable(); },
+      on_timeline_finish: function(){ fullscreenGuard.disable(); }
+    };
+    const PRACTICE_TRIAL_MS = [4, 2, 6, 8];
+    PRACTICE_TRIAL_MS.forEach((m, idx) => {
+      practiceBlock.timeline.push(make_rdk_trial(m, { isPractice: true, practiceIndex: idx + 1 }));
+      practiceBlock.timeline.push(makePracticeFeedback(idx + 1));
+    });
+    timeline.push(practiceBlock);
+
+    // build condition‑dependent reminder text
+    let reminderTaskText;
+
+    if (CONDITION === "coherent") {
+      reminderTaskText = `
+        <p>As a reminder, your task is to click on the circle in which some dots are moving in the same direction. 
+        The direction of movement that you need to detect can be different for each trial.</p>
+      `;
+    } else {
+      reminderTaskText = `
+        <p>As a reminder, your task is to click on the circle in which all dots are moving randomly. 
+        The noise circle can be different for each trial.</p>
+      `;
+    }
+    timeline.push(
+      makeInfoScreen({
+        id: 'reminder',
+        title: 'Main Experiment Trials',
+        body: `
+          <p>You will now begin the experiment. You will no longer be given feedback after each trial.</p>
+          ${reminderTaskText}
+        `,
+        continueLabel: 'Begin Experiment Trials'
+      })
+    );
+
+    function getAvailableViewport(){
+      const pb = document.getElementById('jspsych-progressbar-container');
+      const pbH = pb ? pb.offsetHeight : 0;
+      return { w: window.innerWidth, h: Math.max(200, window.innerHeight - pbH) };
+    }
+
+    // create trials
+    function make_rdk_trial(N, opts = {}){
+      const isPractice = !!opts.isPractice;
+      const practiceIndex = (typeof opts.practiceIndex === 'number') ? opts.practiceIndex : null;
+      const POSITIONS = 8;
+      const speedSetting = (typeof opts.speed === 'undefined') ? DOT_SPEED : opts.speed;
+      return {
+        type: "rdk",
+        number_of_apertures: N,
+        choices: [],
+        on_start: function(trial){
+          if (isPractice) {
+            toggleProgressBar(false);
+          } else {
+            toggleProgressBar(true);
+            if (jsPsych && typeof jsPsych.setProgressBar === 'function') {
+              jsPsych.setProgressBar(completedTrials / TOTAL_TRIALS);
+            }
+          }
+          const vp = getAvailableViewport();
+          const ringCx = vp.w / 2;
+          const ringCy = vp.h / 2;
+
+          const sinTerm8 = Math.sin(Math.PI / POSITIONS);
+          const EDGE_PAD = 8;
+          const horizClear = Math.min(ringCx, vp.w - ringCx) - EDGE_PAD;
+          const vertClear  = Math.min(ringCy, vp.h - ringCy) - EDGE_PAD;
+          const availR     = Math.min(horizClear, vertClear) - DIAMETER/2;
+          const reqR8      = (DIAMETER + GAP_BETWEEN) / (2 * sinTerm8);
+
+          let aperture_diam, ring_radius;
+          if (reqR8 > availR) {
+            aperture_diam = Math.max(80, 2 * sinTerm8 * (availR) - GAP_BETWEEN);
+            ring_radius   = (aperture_diam + GAP_BETWEEN) / (2 * sinTerm8);
+          } else {
+            aperture_diam = DIAMETER;
+            ring_radius   = reqR8;
+          }
+
+          const centers8 = [];
+          for (let i=0;i<POSITIONS;i++){
+            const angle = (i / POSITIONS) * 2 * Math.PI - Math.PI/2;
+            centers8.push([
+              ringCx + ring_radius * Math.cos(angle),
+              ringCy + ring_radius * Math.sin(angle)
+            ]);
+          }
+
+          const idxs = shuffle(Array.from({length: POSITIONS}, (_,i)=>i))
+            .slice(0, N)
+            .sort((a,b)=>a-b);
+
+          const centers_x = idxs.map(i => centers8[i][0]);
+          const centers_y = idxs.map(i => centers8[i][1]);
+          const apertureLabels = idxs.map(i => i + 1);
+
+
+          // NEW LOGIC: choose half the apertures to be coherent ---
+
+          // number of coherent apertures (1 for N=2, 2 for N=4)
+          const n_coherent = N / 2;
+
+          // choose which of the N displayed apertures are coherent
+          const coherent_indices = shuffle([...Array(N).keys()]).slice(0, n_coherent);
+
+          // coherence array
+          const coherence_arr = Array(N).fill(0);
+          coherent_indices.forEach(i => coherence_arr[i] = COHERENCE_LEVEL);
+
+          // choose a single coherent direction for all coherent apertures
+          const coh_dir_deg = COH_DIR_OPTIONS[Math.floor(Math.random()*COH_DIR_OPTIONS.length)];
+          const coherent_direction = Array(N).fill(0);
+          coherent_indices.forEach(i => coherent_direction[i] = coh_dir_deg);
+
+          // labels for correct choices (multiple)
+          const correctLabels = coherent_indices.map(i => apertureLabels[i]);
+
+          // assign to trial
+          trial.aperture_labels = apertureLabels;
+          trial.correct_choice = correctLabels;   // <-- now an array
+          trial.number_of_dots = Array(N).fill(DOTS_PER_APERTURE);
+          trial.coherence = coherence_arr;
+          trial.coherent_direction = coherent_direction;
+          trial.aperture_width = Array(N).fill(aperture_diam);
+          trial.aperture_type = 1;
+          trial.aperture_center_x = centers_x;
+          trial.aperture_center_y = centers_y;
+          trial.speed = speedSetting;
+          trial._coh_dir_deg = coh_dir_deg;
+
+          // data
+          const phaseLabel = isPractice ? 'practice' : 'main';
+          const trialData = {
+            m: N,
+            coherent_indices: coherent_indices,
+            correct_labels: correctLabels,
+            coh_level: COHERENCE_LEVEL,
+            coh_dir_deg: coh_dir_deg,
+            phase: phaseLabel,
+            practice: isPractice
+          };
+          if (practiceIndex !== null) trialData.practice_index = practiceIndex;
+          trial.data = trialData;
+        },
+      trial_duration: -1,
+      response_ends_trial: true,
+      on_finish: function(){
+        if (!isPractice) {
+          completedTrials += 1;
+          if (jsPsych && typeof jsPsych.setProgressBar === 'function') {
+            jsPsych.setProgressBar(Math.min(1, completedTrials / TOTAL_TRIALS));
+          }
+        }
+      }
+    };
+  }
+
+    function makePracticeFeedback(index){
+      const buttonId = `practice-next-${index}`;
+      return {
+        type: "html-keyboard-response",
+        stimulus: function(){
+          const last = jsPsych.data.get().last(1).values()[0] || {};
+
+          // correctness is already condition-dependent implemented in rdk plugin
+          let correct = last.correct === true;
+          const heading = correct ? 'Correct!' : 'Incorrect.';
+
+          // condition‑dependent feedback text
+          let extra = '';
+          if (!correct) {
+            if (CONDITION === "coherent") {
+              extra = `
+                <p>Please click on the circle in which some of the dots are moving in the same direction.</p>
+              `;
+            } else {
+              extra = `
+                <p>Please click on the circle in which all dots are moving randomly.</p>
+              `;
+            }
+          }
+
+          return `
+            <div class="instr welcome practice-feedback">
+              <h1>${heading}</h1>
+              ${extra}
+              <div class="welcome-actions">
+                <button id="${buttonId}" class="ui-button">Next</button>
+              </div>
+            </div>
+          `;
+        },
+
+        choices: jsPsych.NO_KEYS,
+
+        on_load: function(){
+          toggleProgressBar(false);
+          const btn = document.getElementById(buttonId);
+          if (btn) {
+            btn.addEventListener('click', function(){ jsPsych.finishTrial(); });
+          }
+        }
+      };
+    }
+
+
+    const cursorState = { previous: '' };
+    function makeMainISI(){
+      return {
+        type: "html-keyboard-response",
+        stimulus: '<div style="width:100vw;height:100vh;background:#000;"></div>',
+        choices: jsPsych.NO_KEYS,
+        trial_duration: BLANK_DURATION,
+        response_ends_trial: false,
+        on_start: function(){
+          if (jsPsych && typeof jsPsych.setProgressBar === 'function') {
+            jsPsych.setProgressBar(Math.min(1, completedTrials / TOTAL_TRIALS));
+          }
+        },
+        on_load: function(){
+          cursorState.previous = document.body.style.cursor;
+          document.body.style.cursor = 'none';
+        },
+        on_finish: function(){
+          document.body.style.cursor = cursorState.previous || '';
+        }
+      };
+    }
+
+    const m_schedule = balanced_m_schedule(TOTAL_TRIALS, M_VALUES);
+    const mainTrialsTimeline = [];
+    m_schedule.forEach((m, idx) => {
+      mainTrialsTimeline.push(make_rdk_trial(m));
+      if (idx < m_schedule.length - 1) {
+        mainTrialsTimeline.push(makeMainISI());
+      }
+    });
+    const trialsBlock = {
+      timeline: mainTrialsTimeline,
+      on_timeline_start: function(){
+        completedTrials = 0;
+        toggleProgressBar(true);
+        if (jsPsych && typeof jsPsych.setProgressBar === 'function') {
+          jsPsych.setProgressBar(0);
+        }
+        fullscreenGuard.enable();
+      },
+      on_timeline_finish: function(){
+        toggleProgressBar(false);
+        fullscreenGuard.disable();
+      }
+    };
+    timeline.push(trialsBlock);
+
+    // demographics
+    const demographics = {
+      type: "html-keyboard-response",
+      data: { stage: "demographics" },
+      stimulus: `
+        <div class="instr welcome scrollable">
+          <h1>Final Questions</h1>
+          <p>You have reached the end of the experiment! For this last part, please answer the following questions.</p>
+
+          <div style="margin-top:24px;">
+            <label style="display:block;font-weight:600;margin-bottom:8px;">Please select your sex:</label>
+            <div class="radio-group" data-required="true" data-name="sex">
+              <label><input type="radio" name="sex" value="male"> Male</label>
+              <label><input type="radio" name="sex" value="female"> Female</label>
+              <label><input type="radio" name="sex" value="other"> Other</label>
+              <label><input type="radio" name="sex" value="prefer_not"> Choose not to disclose</label>
+            </div>
+          </div>
+
+          <div style="margin-top:24px;">
+            <label style="display:block;font-weight:600;margin-bottom:8px;">Please select your age group:</label>
+            <div class="radio-group" data-required="true" data-name="age">
+              <label><input type="radio" name="age" value="18_25"> 18-25 years old</label>
+              <label><input type="radio" name="age" value="26_40"> 26-40 years old</label>
+              <label><input type="radio" name="age" value="41_65"> 41-65 years old</label>
+              <label><input type="radio" name="age" value="65_plus"> Above 65 years old</label>
+              <label><input type="radio" name="age" value="prefer_not"> Choose not to disclose</label>
+            </div>
+          </div>
+
+          <div style="margin-top:24px;">
+            <label style="display:block;font-weight:600;margin-bottom:8px;">Did you complete all tasks seriously? (Your answer does NOT affect your payment.)</label>
+            <div class="radio-group" data-required="true" data-name="serious">
+              <label><input type="radio" name="serious" value="yes"> Yes, I have done all tasks seriously.</label>
+              <label><input type="radio" name="serious" value="no"> No, I flew through some tasks.</label>
+            </div>
+          </div>
+
+          <div style="margin-top:24px;">
+            <label for="comments" style="display:block;font-weight:600;margin-bottom:8px;">Finally, is there anything you would like to tell us? Do you have any comments about this experiment?</label>
+            <textarea id="comments" rows="4" style="width:100%; max-width:100%; border-radius:10px; border:1px solid rgba(255,255,255,0.2); background:rgba(0,0,0,0.3); color:#fff; padding:10px; font-size:0.95rem; resize:vertical; min-height:80px;"></textarea>
+          </div>
+
+          <div class="welcome-actions" style="margin-top:32px;">
+            <button id="demographics-submit" class="ui-button" disabled>Continue</button>
+          </div>
+        </div>`,
+      choices: jsPsych.NO_KEYS,
+      on_load: function(){
+        toggleProgressBar(false);
+        const container = document.querySelector('.instr.welcome');
+        if (container) container.scrollTop = 0;
+
+        const submitBtn = document.getElementById('demographics-submit');
+        const groups = Array.from(document.querySelectorAll('.radio-group'));
+
+        function getResponses(){
+          const data = {};
+          groups.forEach(group => {
+            const name = group.getAttribute('data-name');
+            const selected = group.querySelector('input[type="radio"]:checked');
+            data[name] = selected ? selected.value : null;
+          });
+          data.comments = document.getElementById('comments')?.value || '';
+          return data;
+        }
+
+        function validate(){
+          const valid = groups.every(group => {
+            if (group.getAttribute('data-required') !== 'true') return true;
+            return !!group.querySelector('input[type="radio"]:checked');
+          });
+          if (submitBtn) submitBtn.disabled = !valid;
+        }
+
+        groups.forEach(group => {
+          group.addEventListener('change', validate);
+        });
+
+        validate();
+
+        if (submitBtn) {
+          submitBtn.addEventListener('click', function(){
+            if (submitBtn.disabled) return;
+            jsPsych.finishTrial({ demographics: getResponses() });
+          });
+        }
+      }
+    };
+    timeline.push(demographics);
+
+    // debrief
+    timeline.push({
+      type: "html-keyboard-response",
+      stimulus: function(){
+        const all = jsPsych.data.get().filter({trial_type:"rdk", phase: "main"});
+        const acc = Math.round(all.select("correct").mean() * 100);
+        const groupedAccuracy = {};
+        all.values().forEach(tr => {
+          const key = Number(tr.m);
+          if (!Number.isFinite(key)) return;
+          if (!groupedAccuracy[key]) groupedAccuracy[key] = { sum: 0, count: 0 };
+          groupedAccuracy[key].sum += Number(tr.correct || 0);
+          groupedAccuracy[key].count += 1;
+        });
+        const accuracyByM = [2, 4, 6, 8].map(level => {
+          const stats = groupedAccuracy[level];
+          const mean = stats && stats.count ? Math.round((stats.sum / stats.count) * 100) : null;
+          return { level, mean };
+        });
+        const accuracyList = accuracyByM.map(({ level, mean }) => {
+          const value = mean === null ? "—" : `${mean}%`;
+          return `${level} circles: ${value}`;
+        }).join("<br>");
+        return `
+          <div class="instr welcome scrollable">
+            <h1>Thank You</h1>
+            <p>Thank you for taking part in this study. To end this study and to get paid, please press the button below.</p>
+            <p>What we aim to find out from this research is how the number of circles affects your ability to detect the circle in which some dots move in the same direction. For this, we have measured your accuracy in alternative forced choice tasks in which varying numbers of stimuli were shown at test. This research is an extension of some of our earlier work. In particular, we attempt to extend the results from Kellen, Winiger, Dunn, and Singmann (2021) to the domain of visual motion perception.</p>
+            <p>Full reference to our earlier work: Kellen, D., Winiger, S., Dunn, J. C., & Singmann, H. (2021). Testing the foundations of signal detection theory in recognition memory. <i>Psychological Review</i>. <a href="https://doi.org/10.1037/rev0000288" target="_blank" style="color:#8ab4ff;">https://doi.org/10.1037/rev0000288</a></p>
+            <p>If you would like further information about the study or would like to know about what our findings are when all the data have been collected and analysed, then please contact Henrik Singmann at <a href="mailto:h.singmann@ucl.ac.uk" style="color:#8ab4ff;">h.singmann@ucl.ac.uk</a>. Your individual results are shown below.</p>
+            <p>Your mean accuracy across all trials: <b>${acc}%</b></p>
+            <p>Your mean accuracy for each number of circles:<br>${accuracyList}</p>
+            <p style="color:#ffffff; font-weight:600;">Please press "End Study".</p>
+            <div class="welcome-actions" style="margin-top:32px;">
+              <button id="debrief-submit" class="ui-button">End Study</button>
+            </div>
+          </div>`;
+      },
+      choices: jsPsych.NO_KEYS,
+      on_start: function(){ toggleProgressBar(false); },
+      on_load: function(){
+        const submit = document.getElementById('debrief-submit');
+        if (submit) submit.addEventListener('click', function(){ jsPsych.finishTrial({ end_study: true }); });
+      },
+      on_finish: function(){
+        fullscreenGuard.disable();
+      }
+    });
+
+    let participantId = null;
+    function determineParticipantId(){
+      if (participantId) return participantId;
+      const params = new URLSearchParams(window.location.search);
+      const urlId =
+        params.get('participant_ID') ||
+        params.get('participantId') ||
+        params.get('participant_id') ||
+        params.get('PROLIFIC_PID') ||
+        params.get('workerId');
+      if (urlId) return urlId;
+      if (window.jatos) {
+        const qp = (typeof jatos !== 'undefined' && jatos.urlQueryParameters) ? jatos.urlQueryParameters : {};
+        if (qp && qp.PROLIFIC_PID) return qp.PROLIFIC_PID;
+        if (qp && qp.participant_ID) return qp.participant_ID;
+        if (typeof jatos.workerId === 'string' && jatos.workerId) return jatos.workerId;
+        if (typeof jatos.studyResultId === 'number') return `sr-${jatos.studyResultId}`;
+      }
+      return `local-${Date.now()}-${Math.random().toString(36).slice(-6)}`;
+    }
+
+    function ensureParticipantIdAssigned(){
+      if (!participantId) {
+        participantId = determineParticipantId();
+        if (jsPsych && jsPsych.data && typeof jsPsych.data.addProperties === 'function') {
+          jsPsych.data.addProperties({ participant_ID: participantId });
+        }
+      }
+      return participantId;
+    }
+
+    function extractDemographics(){
+      const record = jsPsych.data.get().filter({ stage: "demographics" }).values().pop();
+      const payload = (record && record.demographics) ? record.demographics : {};
+      return {
+        sex: payload.sex || null,
+        age: payload.age || null,
+        serious: payload.serious || null,
+        comments: payload.comments || ''
+      };
+    }
+
+    const columnsToOmit = new Set(["phase", "stimulus", "response", "end_study", "trial type", "key_press"]);
+    function buildSanitizedRows(){
+      const pid = ensureParticipantIdAssigned();
+      const demographics = extractDemographics();
+      return jsPsych.data.get().filter({ trial_type: "rdk" }).values().map(row => {
+        const cleaned = {};
+        Object.keys(row).forEach(key => {
+          if (columnsToOmit.has(key)) return;
+          cleaned[key] = row[key];
+        });
+        cleaned.participant_ID = pid;
+        cleaned.subject_id = cleaned.subject_id || prolificParams.subject_id || null;
+        cleaned.study_id = cleaned.study_id || prolificParams.study_id || null;
+        cleaned.session_id = cleaned.session_id || prolificParams.session_id || null;
+        cleaned.condition = CONDITION;
+        cleaned.demographics_sex = demographics.sex;
+        cleaned.demographics_age = demographics.age;
+        cleaned.demographics_serious = demographics.serious;
+        cleaned.demographics_comments = demographics.comments;
+        return cleaned;
+      });
+    }
+
+    function exportResultJson(){
+      const rows = buildSanitizedRows();
+      return JSON.stringify(rows);
+    }
+
+    const jsPsychConfig = {
+      timeline: timeline,
+      show_progress_bar: true
+    };
+    if (window.jatos) {
+      let abortButtonAdded = false;
+      jsPsychConfig.on_trial_start = () => {
+        if (!abortButtonAdded) {
+          jatos.addAbortButton();
+          abortButtonAdded = true;
+        }
+      };
+      jsPsychConfig.on_finish = () => {
+        const resultJson = exportResultJson();
+        jatos.submitResultData(resultJson)
+          .then(() => jatos.endStudy())
+          .catch(err => {
+            console.error("Failed to submit result data to JATOS", err);
+            jatos.abortStudy(`Result submission failed: ${err}`);
+          });
+      };
+      jatos.onLoad(() => {
+        ensureParticipantIdAssigned();
+        jsPsych.init(jsPsychConfig);
+      });
+    } else {
+      ensureParticipantIdAssigned();
+      jsPsych.init(jsPsychConfig);
+    }
+  </script>
+</html>
