@@ -140,18 +140,52 @@
 
         document.documentElement.style.overflow = 'hidden';
         document.body.style.overflow = 'hidden';
+
         const pb = document.getElementById('jspsych-progressbar-container');
         const pbH = pb ? pb.offsetHeight : 0;
         const w = window.innerWidth;
         const h = Math.max(200, window.innerHeight - pbH);
+
         display_element.style.margin = '0';
         display_element.style.padding = '0';
         display_element.style.overflow = 'hidden';
+
+        // ADD THIS
+        const trialInstruction =
+          CONDITION === "coherent"
+            ? "Click on the circle that you believe contains the most coherent motion."
+            : "Click on the circle that you believe contains only random motion.";
+
         display_element.innerHTML = `
           <div id="rdk-wrap" style="position:relative;width:${w}px;height:${h}px;margin:0 auto;padding:0;">
-            <canvas id="rdk-canvas" width="${w}" height="${h}" style="display:block;width:${w}px;height:${h}px;margin:0;padding:0;"></canvas>
+
+            <canvas id="rdk-canvas"
+                    width="${w}"
+                    height="${h}"
+                    style="display:block;width:${w}px;height:${h}px;margin:0;padding:0;">
+            </canvas>
+
+            <div id="trial-instruction"
+                style="
+                  position:absolute;
+                  bottom:20px;
+                  left:50%;
+                  transform:translateX(-50%);
+                  background:rgba(0,0,0,0.75);
+                  color:white;
+                  padding:12px 24px;
+                  border-radius:12px;
+                  font-size:18px;
+                  text-align:center;
+                  max-width:80%;
+                  pointer-events:none;
+                  z-index:1000;">
+              ${trialInstruction}
+            </div>
+
           </div>
         `;
+
         const canvas = display_element.querySelector('#rdk-canvas');
         const wrap = display_element.querySelector('#rdk-wrap');
         const ctx = canvas.getContext('2d');
@@ -366,7 +400,7 @@
 
   <script>
     // experiment configuration
-    const TOTAL_TRIALS = 16;
+    const TOTAL_TRIALS = 40;
     const M_VALUES = [2, 4, 6, 8];
 
     const DIAMETER = 160;
