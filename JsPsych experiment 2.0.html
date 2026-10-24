@@ -12,7 +12,8 @@
       .jspsych-content { max-width: 100% !important; }
       html, body { height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; }
       body { background: #111; color: #eee; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
-      #jspsych-progressbar-container { display: none; }
+      #jspsych-progressbar-container { display: none; position: fixed !important; top: 0; left: 0; width: 100%; z-index: 9999;
+}
       .instr { max-width: 800px; margin: 40px auto; line-height: 1.6; }
       .instr.welcome {
         max-width: 900px;
@@ -138,57 +139,57 @@
           return Math.max(0, num);
         });
 
-        document.documentElement.style.overflow = 'hidden';
-        document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
 
-        const pb = document.getElementById('jspsych-progressbar-container');
-        const pbH = pb ? pb.offsetHeight : 0;
-        const w = window.innerWidth;
-        const h = Math.max(200, window.innerHeight - pbH);
+      const pb = document.getElementById('jspsych-progressbar-container');
+      const pbH = pb ? pb.offsetHeight : 0;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
 
-        display_element.style.margin = '0';
-        display_element.style.padding = '0';
-        display_element.style.overflow = 'hidden';
+      display_element.style.margin = '0';
+      display_element.style.padding = '0';
+      display_element.style.overflow = 'hidden';
 
-        // ADD THIS
-        const trialInstruction =
-          CONDITION === "coherent"
-            ? "Click on the circle that you believe contains the most coherent motion."
-            : "Click on the circle that you believe contains only random motion.";
+      // ADD THIS
+      const trialInstruction =
+        CONDITION === "coherent"
+          ? "Click on the circle that you believe contains the most coherent motion."
+          : "Click on the circle that you believe contains only random motion.";
 
-        display_element.innerHTML = `
-          <div id="rdk-wrap" style="position:relative;width:${w}px;height:${h}px;margin:0 auto;padding:0;">
+      display_element.innerHTML = `
+        <div id="rdk-wrap" style="position:relative;width:${w}px;height:${h}px;margin:0 auto;padding:0;">
 
-            <canvas id="rdk-canvas"
-                    width="${w}"
-                    height="${h}"
-                    style="display:block;width:${w}px;height:${h}px;margin:0;padding:0;">
-            </canvas>
+          <canvas id="rdk-canvas"
+                  width="${w}"
+                  height="${h}"
+                  style="display:block;width:${w}px;height:${h}px;margin:0;padding:0;">
+          </canvas>
 
-            <div id="trial-instruction"
-                style="
-                  position:absolute;
-                  bottom:20px;
-                  left:50%;
-                  transform:translateX(-50%);
-                  background:rgba(0,0,0,0.75);
-                  color:white;
-                  padding:12px 24px;
-                  border-radius:12px;
-                  font-size:18px;
-                  text-align:center;
-                  max-width:80%;
-                  pointer-events:none;
-                  z-index:1000;">
-              ${trialInstruction}
-            </div>
-
+          <div id="trial-instruction"
+              style="
+                position:absolute;
+                bottom:20px;
+                left:50%;
+                transform:translateX(-50%);
+                background:rgba(0,0,0,0.75);
+                color:white;
+                padding:12px 24px;
+                border-radius:12px;
+                font-size:18px;
+                text-align:center;
+                max-width:80%;
+                pointer-events:none;
+                z-index:1000;">
+            ${trialInstruction}
           </div>
-        `;
 
-        const canvas = display_element.querySelector('#rdk-canvas');
-        const wrap = display_element.querySelector('#rdk-wrap');
-        const ctx = canvas.getContext('2d');
+        </div>
+      `;
+
+      const canvas = display_element.querySelector('#rdk-canvas');
+      const wrap = display_element.querySelector('#rdk-wrap');
+      const ctx = canvas.getContext('2d');
 
         const apertures = [];
         const labels = Array.isArray(trial.aperture_labels) ? trial.aperture_labels : [];
@@ -796,7 +797,7 @@
     function getAvailableViewport(){
       const pb = document.getElementById('jspsych-progressbar-container');
       const pbH = pb ? pb.offsetHeight : 0;
-      return { w: window.innerWidth, h: Math.max(200, window.innerHeight - pbH) };
+      return { w: window.innerWidth, h: window.innerHeight };
     }
 
     // create trials
