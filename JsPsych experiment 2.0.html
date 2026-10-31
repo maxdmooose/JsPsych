@@ -138,6 +138,7 @@
           if (!Number.isFinite(num)) return DEFAULT_DOT_SPEED;
           return Math.max(0, num);
         });
+        const RESPONSE_LOCKOUT = 1000 + N * 125
 
       document.documentElement.style.overflow = 'hidden';
       document.body.style.overflow = 'hidden';
@@ -154,7 +155,7 @@
       // ADD THIS
       const trialInstruction =
         CONDITION === "coherent"
-          ? "Click on the circle that you believe contains the most coherent motion."
+          ? "Click on the circle that you believe contains coherent motion."
           : "Click on the circle that you believe contains only random motion.";
 
       display_element.innerHTML = `
@@ -353,10 +354,17 @@
         }
         function onPointerDown(e){
           if (responded) return;
+          const elapsed = performance.now() - startTime
           const p = toCanvasXY(e);
           for (let a=0;a<N;a++){
             const A = apertures[a];
             if (Math.hypot(p.x - A.cx, p.y - A.cy) <= A.radius){
+              if (elapsed < RESPONSE_LOCKOUT){
+                alert(
+                  `Please wait ${RESPONSE_LOCKOUT}ms before responding`
+                )
+                return
+              }
               end_trial({ rt: Math.round(performance.now()-startTime), chosen: A.label });
               return;
             }
@@ -620,11 +628,11 @@
 
     if (CONDITION === "coherent") {
       purposeText = `
-        <p>Your task is to click on a circle in which some dots are moving in the same direction.</p>
+        <p>Your task is to click the circle you believe contains coherent motion.</p>
       `;
     } else {
       purposeText = `
-        <p>Your task is to click on a circle in which all dots are moving randomly (i.e. none of the dots are moving in the same direction).</p>
+        <p>Your task is to click the circle you believe does not contains coherent motion.</p>
       `;
     }
     const infoScreens = [
@@ -638,7 +646,7 @@
           <p>This experiment involves a motion perception task. Please read the instructions carefully and try to do the best you can.</p>
           <p><strong>What will you be doing in this experiment?</strong></p>
           <p>In this experiment we are interested in how well you can detect when dots move in the same direction, compared to dots moving randomly.</p>
-          <p>During the experiment, you will be presented with either 2, 4, 6, or 8 circles containing containing many moving dots. For half of the circles displayed, some of the dots are moving in the same direction, while the rest are moving randomly. In all the other circles, all of the dots are moving randomly. ${purposeText}</p>
+          <p>During the experiment, you will be presented with either 2, 4, 6, or 8 circles containing containing many moving dots. A circle can contain coherent motion, meaning that some of its dots move in the same direction. ${purposeText}</p>
           <p>Please press Continue.</p>
         `
       }),
@@ -727,19 +735,18 @@
 
     if (CONDITION === "coherent") {
       taskInstruction = `
-        <p>Your task is to click on a circle in which some dots are moving in the same direction using the mouse cursor.</p>
-      `;
+        <p>Your task is to click the circle you believe <strong>contains</strong> coherent motion.</p>      `;
     } else {
       taskInstruction = `
-        <p>Your task is to click on a circle in which all dots are moving randomly (i.e. none of the dots are moving in the same direction).</p>
-      `;
+        <p>Your task is to click the circle you believe <strong>does not contain</strong> coherent motion.</p>      `;
     }
 
     // Build full instruction body
     const instructionBody = `
-      <p>This experiment consists of 4 practice trials followed by 8 real trials.</p>
-      <p>Each trial, 2, 4, 6, or 8 circles will appear on the screen with many dots moving within them.</p>
-      <p>For either 2, 4, 6, or 8 circles, half of them will have some of the dots moving in the same direction, while the rest of the dots in that circle are moving in random directions. In all of the other circles, all of the dots are moving in random directions. The direction of movement that you need to detect can be different for each trial.</p>
+      <p>This experiment consists of 4 practice trials followed by 40 real trials.</p>
+      <p>In each trial, 2, 4, 6, or 8 circles will appear on the screen, each containing many moving dots.</p>
+      <p>The circle can contain coherent motion, meaning that some of its dots move in the same direction. The direction of coherent motion may differ from trial to trial.</p>
+      <p>In the other circle(s), all of the dots move in random directions.<p>
       ${taskInstruction}
       <p>We will begin with 4 practice trials in which you will get feedback. These do not count towards your overall score.</p>
       <p>Once you have read and understood these instructions, click Start Practice Trials.</p>
