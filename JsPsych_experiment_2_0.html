@@ -155,8 +155,8 @@
       // ADD THIS
       const trialInstruction =
         CONDITION === "coherent"
-          ? "Click on the circle that you believe contains coherent motion."
-          : "Click on the circle that you believe contains only random motion.";
+          ? "Click on the circle you're most certain contains coherent motion."
+          : "Click on the circle you're most certain does not contain coherent motion.";
 
       display_element.innerHTML = `
         <div id="rdk-wrap" style="position:relative;width:${w}px;height:${h}px;margin:0 auto;padding:0;">
@@ -630,11 +630,11 @@
 
     if (CONDITION === "coherent") {
       purposeText = `
-        <p>Your task is to click the circle you believe contains coherent motion.</p>
+        <p>Your task is to click on the circle you're most certain contains coherent motion.</p>
       `;
     } else {
       purposeText = `
-        <p>Your task is to click the circle you believe does not contains coherent motion.</p>
+        <p>Your task is to click on the circle you're most certain does not contain coherent motion.</p>
       `;
     }
     const infoScreens = [
@@ -737,10 +737,10 @@
 
     if (CONDITION === "coherent") {
       taskInstruction = `
-        <p>Your task is to click the circle you believe <strong>contains</strong> coherent motion.</p>      `;
+        <p>Your task is to click on the circle you're most certain contains coherent motion.</p>      `;
     } else {
       taskInstruction = `
-        <p>Your task is to click the circle you believe <strong>does not contain</strong> coherent motion.</p>      `;
+        <pYour task is to click on the circle you're most certain does not contain coherent motion.</p>      `;
     }
 
     // Build full instruction body
